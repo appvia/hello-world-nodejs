@@ -1,0 +1,10 @@
+apiVersion: v1
+clusters:
+- cluster:
+    server: https://E08D7E08368B2171667532965DDEC4DB.yl4.eu-west-2.eks.amazonaws.com
+  name: appvia-demo
+contexts: []
+current-context: ""
+kind: Config
+preferences: {}
+users: []

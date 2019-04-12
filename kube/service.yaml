@@ -1,0 +1,14 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: hello-world
+  labels:
+    run: hello-world
+spec:
+  type: LoadBalancer
+  selector:
+    run: hello-world
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 4000

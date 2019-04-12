@@ -1,2 +1,1 @@
-# hello-world-nodejs
-A node application hello world example
+# hello-world-demo
