@@ -1,0 +1,72 @@
+version: 2
+jobs:
+  test:
+    docker:
+      - image: node:10
+    working_directory: ~/repo
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - v1-dependencies-{{ checksum "package.json" }}
+            - v1-dependencies-
+      - run: npm install
+      - run: npm test
+      - save_cache:
+          paths:
+            - node_modules
+          key: v1-dependencies-{{ checksum "package.json" }}
+
+  build_and_push_latest:
+    machine: true
+    parallelism: 1
+    steps:
+      - checkout
+      - run:
+          name: Build image and push to Quay with tag latest
+          command: |
+            docker login quay.io --username $QUAY_USERNAME --password $QUAY_PASSWORD
+            docker build -t quay.io/appvia_hub_dev/hello-world-demo:$CIRCLE_SHA1 .
+            docker tag quay.io/appvia_hub_dev/hello-world-demo:$CIRCLE_SHA1 quay.io/appvia_hub_dev/hello-world-demo:latest
+            docker push quay.io/appvia_hub_dev/hello-world-demo:$CIRCLE_SHA1
+            docker push quay.io/appvia_hub_dev/hello-world-demo:latest
+
+  deploy_latest:
+    docker:
+      - image: quay.io/ukhomeofficedigital/kd:v1.10.6
+    working_directory: ~/repo
+    steps:
+      - checkout
+      - run:
+          name: Set Env and Deploy
+          command: |
+            kubectl config set-cluster appvia-demo --server=$KUBE_API_SERVER
+            kubectl config set clusters.appvia-demo.certificate-authority-data $KUBE_CERT_DATA
+            kubectl config set-credentials demo-user --token=$KUBE_TOKEN
+            kubectl config set-context appvia-demo --cluster=appvia-demo --user=demo-user
+            kd --context appvia-demo --namespace $KUBE_NAMESPACE -f kube/service.yaml
+            kd --context appvia-demo --namespace $KUBE_NAMESPACE -f kube/service.yaml
+
+workflows:
+  version: 2
+  main:
+    jobs:
+      - test
+      - build_and_push_latest:
+          requires:
+            - test
+          filters:
+            branches:
+              only:
+                - master
+            tags:
+              ignore: /.*/
+      - deploy_latest:
+          requires:
+            - build_and_push_latest
+          filters:
+            branches:
+              only:
+                - master
+            tags:
+              ignore: /.*/
